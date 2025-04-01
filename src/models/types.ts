@@ -2,7 +2,7 @@
 export interface User {
     id: string;
     email: string;
-    name?: string;
+    name: string | null;
     authProviderId: string;
     createdAt: Date;
     updatedAt: Date;

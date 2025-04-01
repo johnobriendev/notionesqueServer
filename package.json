@@ -1,14 +1,12 @@
 {
   "name": "notionesqueserver",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node dist/index.js",
-    "dev": "nodemon src/index.ts",
+    "start": "node dist/server.js",
+    "dev": "nodemon src/server.ts",
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -21,7 +19,6 @@
     "url": "https://github.com/johnobriendev/notionesqueServer/issues"
   },
   "homepage": "https://github.com/johnobriendev/notionesqueServer#readme",
-  "description": "",
   "dependencies": {
     "@prisma/client": "^6.5.0",
     "cors": "^2.8.5",
@@ -38,5 +35,6 @@
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
-  }
+  },
+  "description": ""
 }
