@@ -1,6 +1,8 @@
 // src/routes/index.ts
 import { Router } from 'express';
 import userRoutes from './userRoutes';
+import projectRoutes from './projectRoutes';
+
 
 const router = Router();
 
@@ -11,5 +13,8 @@ router.get('/health', (req, res) => {
 
 // User routes
 router.use('/users', userRoutes);
+
+// Project routes
+router.use('/projects', projectRoutes);
 
 export default router;
