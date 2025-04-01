@@ -20,12 +20,12 @@ export interface User {
   export interface Task {
     id: string;
     title: string;
-    description?: string;
-    status: TaskStatus;
-    priority: TaskPriority;
+    description: string | null;
+    status: string;
+    priority: string;
     position: number;
     projectId: string;
-    customFields?: Record<string, string | number | boolean>;
+    customFields: any | null;
     createdAt: Date;
     updatedAt: Date;
   }
@@ -52,7 +52,7 @@ export interface User {
     status?: TaskStatus;
     priority?: TaskPriority;
     position: number;
-    customFields?: Record<string, string | number | boolean>;
+    customFields: any;
   }
   
   export interface UpdateTaskDto {
@@ -61,7 +61,7 @@ export interface User {
     status?: TaskStatus;
     priority?: TaskPriority;
     position?: number;
-    customFields?: Record<string, string | number | boolean>;
+    customFields: any;
   }
   
   export interface BulkUpdateTasksDto {
