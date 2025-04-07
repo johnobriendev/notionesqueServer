@@ -59,10 +59,10 @@ export const getTaskById = async (
   next: NextFunction
 ) => {
   try {
-    const { id } = req.params;
+    const { projectId, taskId } = req.params;
     
     return await withAuthUser(req, res, async (user) => {
-      const task = await taskService.getTaskById(id, user.id);
+      const task = await taskService.getTaskById(taskId, user.id);
       
       if (!task) {
         return res.status(404).json({ error: 'Task not found or unauthorized' });
@@ -82,10 +82,10 @@ export const updateTask = async (
   next: NextFunction
 ) => {
   try {
-    const { id } = req.params;
+    const { projectId, taskId } = req.params;
     
     return await withAuthUser(req, res, async (user) => {
-      const task = await taskService.updateTask(id, user.id, req.body);
+      const task = await taskService.updateTask(taskId, user.id, req.body);
       
       if (!task) {
         return res.status(404).json({ error: 'Task not found or unauthorized' });
@@ -105,10 +105,10 @@ export const deleteTask = async (
   next: NextFunction
 ) => {
   try {
-    const { id } = req.params;
+    const { projectId, taskId } = req.params;
     
     return await withAuthUser(req, res, async (user) => {
-      const task = await taskService.deleteTask(id, user.id);
+      const task = await taskService.deleteTask(taskId, user.id);
       
       if (!task) {
         return res.status(404).json({ error: 'Task not found or unauthorized' });
@@ -128,6 +128,8 @@ export const bulkUpdateTasks = async (
   next: NextFunction
 ) => {
   try {
+    const { projectId } = req.params;
+
     return await withAuthUser(req, res, async (user) => {
       try {
         const count = await taskService.bulkUpdateTasks(user.id, req.body);
@@ -158,6 +160,34 @@ export const reorderTasks = async (
       try {
         const tasks = await taskService.reorderTasks(projectId, user.id, req.body);
         return res.status(200).json(tasks);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+        return res.status(400).json({ error: errorMessage });
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const deleteMultipleTasks = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { projectId } = req.params;
+    const { taskIds } = req.body;
+    
+    return await withAuthUser(req, res, async (user) => {
+      try {
+        // Create this method in your taskService if it doesn't exist
+        const count = await taskService.deleteMultipleTasks(projectId, user.id, taskIds);
+        return res.status(200).json({ 
+          message: `Successfully deleted ${count} tasks`,
+          count
+        });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
         return res.status(400).json({ error: errorMessage });

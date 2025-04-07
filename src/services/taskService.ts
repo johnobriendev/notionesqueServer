@@ -191,3 +191,46 @@ export const reorderTasks = async (
   
   return prisma.$transaction(updates);
 };
+
+
+// Delete multiple tasks
+export const deleteMultipleTasks = async (
+  projectId: string,
+  userId: string,
+  taskIds: string[]
+): Promise<number> => {
+  // Verify project exists and belongs to the user
+  const project = await prisma.project.findFirst({
+    where: {
+      id: projectId,
+      userId
+    }
+  });
+
+  if (!project) {
+    throw new Error('Project not found or unauthorized');
+  }
+  
+  // Verify all tasks belong to the specified project
+  const tasksToDelete = await prisma.task.findMany({
+    where: {
+      id: { in: taskIds },
+      projectId
+    }
+  });
+  
+  // If we don't find all tasks, some might not exist or not belong to the project
+  if (tasksToDelete.length !== taskIds.length) {
+    throw new Error('One or more tasks not found or do not belong to this project');
+  }
+  
+  // Delete the tasks
+  const deleteOperation = await prisma.task.deleteMany({
+    where: {
+      id: { in: taskIds },
+      projectId
+    }
+  });
+  
+  return deleteOperation.count;
+};

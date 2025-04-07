@@ -30,6 +30,6 @@ router.delete('/:taskId', asyncHandler(taskController.deleteTask));
 // Bulk operations
 router.post('/bulk', validateBulkUpdateData, asyncHandler(taskController.bulkUpdateTasks));
 router.post('/reorder', validateReorderData, asyncHandler(taskController.reorderTasks));
-//router.delete('/', asyncHandler(taskController.deleteMultipleTasks));
+router.delete('/', asyncHandler(taskController.deleteMultipleTasks));
 
 export default router;
