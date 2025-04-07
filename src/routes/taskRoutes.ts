@@ -9,34 +9,27 @@ import {
 } from '../middleware/validation';
 import { asyncHandler } from '../utils/asyncHandler';
 
-const router = Router();
+//const router = Router();
+
+// Use mergeParams to access projectId from parent router
+const router = Router({ mergeParams: true });
 
 // All task routes require authentication
 router.use(checkJwt, extractUserInfo);
 
 // Routes for specific project tasks
-router.get('/project/:projectId', asyncHandler(taskController.getTasksByProject));
-router.post('/project/:projectId', 
-  validateTaskData, // No longer calling as a function
-  asyncHandler(taskController.createTask)
-);
-router.post('/project/:projectId/reorder', 
-  validateReorderData, // No longer calling as a function
-  asyncHandler(taskController.reorderTasks)
-);
+router.get('/', asyncHandler(taskController.getTasksByProject));
+router.post('/', validateTaskData, asyncHandler(taskController.createTask));
+
 
 // Routes for individual tasks
-router.get('/:id', asyncHandler(taskController.getTaskById));
-router.patch('/:id', 
-  validateTaskData, // No longer calling as a function
-  asyncHandler(taskController.updateTask)
-);
-router.delete('/:id', asyncHandler(taskController.deleteTask));
+router.get('/:taskId', asyncHandler(taskController.getTaskById));
+router.patch('/:taskId', validateTaskData, asyncHandler(taskController.updateTask));
+router.delete('/:taskId', asyncHandler(taskController.deleteTask));
 
 // Bulk operations
-router.post('/bulk-update', 
-  validateBulkUpdateData, // No longer calling as a function
-  asyncHandler(taskController.bulkUpdateTasks)
-);
+router.post('/bulk', validateBulkUpdateData, asyncHandler(taskController.bulkUpdateTasks));
+router.post('/reorder', validateReorderData, asyncHandler(taskController.reorderTasks));
+//router.delete('/', asyncHandler(taskController.deleteMultipleTasks));
 
 export default router;

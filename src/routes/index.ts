@@ -19,6 +19,7 @@ router.use('/users', userRoutes);
 router.use('/projects', projectRoutes);
 
 // Task routes
-router.use('/tasks', taskRoutes);
+//task routes are now under projects
+//router.use('/tasks', taskRoutes);
 
 export default router;
