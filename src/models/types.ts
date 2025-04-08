@@ -1,4 +1,8 @@
 // src/models/types.ts
+
+import { Prisma } from '@prisma/client';
+
+
 export interface User {
     id: string;
     email: string;
@@ -25,7 +29,7 @@ export interface User {
     priority: string;
     position: number;
     projectId: string;
-    customFields: any | null;
+    customFields: Prisma.JsonValue | null;
     createdAt: Date;
     updatedAt: Date;
   }
@@ -61,7 +65,7 @@ export interface User {
     status?: TaskStatus;
     priority?: TaskPriority;
     position?: number;
-    customFields: any;
+    customFields?: Record<string, any> | null;
   }
   
   export interface BulkUpdateTasksDto {

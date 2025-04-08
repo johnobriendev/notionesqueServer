@@ -197,3 +197,34 @@ export const deleteMultipleTasks = async (
     next(error);
   }
 };
+
+
+// Update task priority
+export const updateTaskPriority = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { projectId, taskId } = req.params;
+    const { priority, destinationIndex } = req.body;
+    
+    return await withAuthUser(req, res, async (user) => {
+      // Create a simpler update object for the service
+      const updateData = {
+        priority,
+        position: destinationIndex // Optional position
+      };
+      
+      const task = await taskService.updateTask(taskId, user.id, updateData);
+      
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found or unauthorized' });
+      }
+      
+      return res.status(200).json(task);
+    });
+  } catch (error) {
+    next(error);
+  }
+};

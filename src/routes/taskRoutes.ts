@@ -25,11 +25,12 @@ router.post('/', validateTaskData, asyncHandler(taskController.createTask));
 // Routes for individual tasks
 router.get('/:taskId', asyncHandler(taskController.getTaskById));
 router.patch('/:taskId', validateTaskData, asyncHandler(taskController.updateTask));
+router.patch('/:taskId/priority', asyncHandler(taskController.updateTaskPriority));
 router.delete('/:taskId', asyncHandler(taskController.deleteTask));
 
 // Bulk operations
-router.post('/bulk', validateBulkUpdateData, asyncHandler(taskController.bulkUpdateTasks));
-router.post('/reorder', validateReorderData, asyncHandler(taskController.reorderTasks));
+router.put('/bulk', validateBulkUpdateData, asyncHandler(taskController.bulkUpdateTasks));
+router.put('/reorder', validateReorderData, asyncHandler(taskController.reorderTasks));
 router.delete('/', asyncHandler(taskController.deleteMultipleTasks));
 
 export default router;
