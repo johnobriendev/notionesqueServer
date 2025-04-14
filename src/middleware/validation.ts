@@ -109,20 +109,20 @@ const validateBulkUpdateDataFn = (
   res: Response,
   next: NextFunction
 ) => {
-  const { ids, update } = req.body;
+  const { taskIds, updates } = req.body;
   
   // Validate ids array
-  if (!Array.isArray(ids) || ids.length === 0) {
+  if (!Array.isArray(taskIds) || taskIds.length === 0) {
     return res.status(400).json({ error: 'Task IDs array is required and must not be empty' });
   }
   
   // Validate update object
-  if (!update || typeof update !== 'object') {
+  if (!updates || typeof updates !== 'object') {
     return res.status(400).json({ error: 'Update object is required' });
   }
   
   // Ensure at least one valid field is being updated
-  const { status, priority } = update;
+  const { status, priority } = updates;
   
   if (status === undefined && priority === undefined) {
     return res.status(400).json({ 

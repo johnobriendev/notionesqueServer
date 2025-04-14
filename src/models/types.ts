@@ -69,8 +69,8 @@ export interface User {
   }
   
   export interface BulkUpdateTasksDto {
-    ids: string[];
-    update: {
+    taskIds: string[];
+    updates: {
       status?: TaskStatus;
       priority?: TaskPriority;
     };

@@ -128,12 +128,12 @@ export const bulkUpdateTasks = async (
   userId: string,
   data: BulkUpdateTasksDto
 ): Promise<number> => {
-  const { ids, update } = data;
+  const { taskIds, updates } = data;
   
   // Verify all tasks belong to projects owned by the user
   const tasksToUpdate = await prisma.task.findMany({
     where: {
-      id: { in: ids },
+      id: { in: taskIds },
       project: {
         userId
       }
@@ -141,19 +141,19 @@ export const bulkUpdateTasks = async (
   });
   
   // If we don't find all tasks, some might not exist or not belong to the user
-  if (tasksToUpdate.length !== ids.length) {
+  if (tasksToUpdate.length !== taskIds.length) {
     throw new Error('One or more tasks not found or unauthorized');
   }
 
   // Create a clean update object without undefined values
   const updateData: any = {};
-  if (update.status !== undefined) updateData.status = update.status;
-  if (update.priority !== undefined) updateData.priority = update.priority;
+  if (updates.status !== undefined) updateData.status = updates.status;
+  if (updates.priority !== undefined) updateData.priority = updates.priority;
   
   // Perform the update operation
   const updateOperation = await prisma.task.updateMany({
     where: {
-      id: { in: ids }
+      id: { in: taskIds }
     },
     data: updateData
   });
