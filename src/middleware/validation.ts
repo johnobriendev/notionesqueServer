@@ -1,10 +1,10 @@
-// src/middleware/validation.ts - STREAMLINED
+// src/middleware/validation.ts 
 import { Request, Response, NextFunction } from 'express';
 
 // Helper function for validation responses
-const validationError = (res: Response, message: string) => 
+const validationError = (res: Response, message: string): void => {
   res.status(400).json({ error: message });
-
+};
 // Simplified validation functions (no asyncHandler needed - these are sync)
 export const validateProjectData = (req: Request, res: Response, next: NextFunction) => {
   const { name, description } = req.body;

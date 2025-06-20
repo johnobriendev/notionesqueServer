@@ -1,4 +1,4 @@
-// src/routes/taskRoutes.ts (update this part)
+// src/routes/taskRoutes.ts
 import { Router } from 'express';
 import { checkJwt, extractUserInfo } from '../middleware/auth';
 import * as taskController from '../controllers/taskController';
@@ -7,30 +7,25 @@ import {
   validateBulkUpdateData, 
   validateReorderData 
 } from '../middleware/validation';
-import { asyncHandler } from '../utils/asyncHandler';
 
-//const router = Router();
-
-// Use mergeParams to access projectId from parent router
 const router = Router({ mergeParams: true });
 
-// All task routes require authentication
+// Apply auth middleware to all routes
 router.use(checkJwt, extractUserInfo);
 
-// Routes for specific project tasks
-router.get('/', asyncHandler(taskController.getTasksByProject));
-router.post('/', validateTaskData, asyncHandler(taskController.createTask));
+// Project task routes - cast each controller function
+router.get('/', taskController.getTasksByProject as any);
+router.post('/', validateTaskData, taskController.createTask as any);
 
-
-// Routes for individual tasks
-router.get('/:taskId', asyncHandler(taskController.getTaskById));
-router.patch('/:taskId', validateTaskData, asyncHandler(taskController.updateTask));
-router.patch('/:taskId/priority', asyncHandler(taskController.updateTaskPriority));
-router.delete('/:taskId', asyncHandler(taskController.deleteTask));
+// Individual task routes
+router.get('/:taskId', taskController.getTaskById as any);
+router.patch('/:taskId', validateTaskData, taskController.updateTask as any);
+router.patch('/:taskId/priority', taskController.updateTaskPriority as any);
+router.delete('/:taskId', taskController.deleteTask as any);
 
 // Bulk operations
-router.put('/bulk', validateBulkUpdateData, asyncHandler(taskController.bulkUpdateTasks));
-router.put('/reorder', validateReorderData, asyncHandler(taskController.reorderTasks));
-router.delete('/', asyncHandler(taskController.deleteMultipleTasks));
+router.put('/bulk', validateBulkUpdateData, taskController.bulkUpdateTasks as any);
+router.put('/reorder', validateReorderData, taskController.reorderTasks as any);
+router.delete('/', taskController.deleteMultipleTasks as any);
 
 export default router;

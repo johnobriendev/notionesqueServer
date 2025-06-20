@@ -2,25 +2,12 @@
 import { Router } from 'express';
 import { checkJwt, extractUserInfo } from '../middleware/auth';
 import * as userController from '../controllers/userController';
-import { asyncHandler } from '../utils/asyncHandler';
-
 
 const router = Router();
 
-// Get current user
-router.get(
-  '/me',
-  checkJwt,
-  extractUserInfo,
-  asyncHandler(userController.getCurrentUser)
-);
+router.use(checkJwt, extractUserInfo);
 
-// Update user profile
-router.patch(
-  '/me',
-  checkJwt,
-  extractUserInfo,
-  asyncHandler(userController.updateUser)
-);
+router.get('/me', userController.getCurrentUser as any);
+router.patch('/me', userController.updateUser as any);
 
 export default router;
