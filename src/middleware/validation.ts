@@ -1,186 +1,109 @@
-// src/middleware/validation.ts
+// src/middleware/validation.ts - STREAMLINED
 import { Request, Response, NextFunction } from 'express';
-import { asyncHandler } from '../utils/asyncHandler';
 
-// Define the validation function
-const validateProjectDataFn = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const { name } = req.body;
+// Helper function for validation responses
+const validationError = (res: Response, message: string) => 
+  res.status(400).json({ error: message });
+
+// Simplified validation functions (no asyncHandler needed - these are sync)
+export const validateProjectData = (req: Request, res: Response, next: NextFunction) => {
+  const { name, description } = req.body;
   
-  // Project name is required
-  if (!name || typeof name !== 'string' || name.trim() === '') {
-    return res.status(400).json({ error: 'Project name is required' });
+  if (!name?.trim()) {
+    return validationError(res, 'Project name is required');
   }
   
-  // Project name should have a reasonable length
   if (name.length > 100) {
-    return res.status(400).json({ error: 'Project name is too long (max 100 characters)' });
+    return validationError(res, 'Project name is too long (max 100 characters)');
   }
   
-  // If description is provided, it should be a string
-  if (req.body.description !== undefined && 
-      (typeof req.body.description !== 'string' || req.body.description.length > 500)) {
-    return res.status(400).json({ 
-      error: 'Project description must be a string (max 500 characters)' 
-    });
+  if (description && description.length > 500) {
+    return validationError(res, 'Project description is too long (max 500 characters)');
   }
   
   next();
 };
 
-// Export a wrapped version of the function
-export const validateProjectData = asyncHandler(validateProjectDataFn);
-
-
-// Task validation function definition
-const validateTaskDataFn = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const { title, status, priority, position, customFields } = req.body;
+export const validateTaskData = (req: Request, res: Response, next: NextFunction) => {
+  const { title, status, priority, position, description, customFields } = req.body;
   
-  // Title is required
-  if (!title || typeof title !== 'string' || title.trim() === '') {
-    return res.status(400).json({ error: 'Task title is required' });
+  if (!title?.trim()) {
+    return validationError(res, 'Task title is required');
   }
   
-  // Title should have a reasonable length
   if (title.length > 200) {
-    return res.status(400).json({ error: 'Task title is too long (max 200 characters)' });
+    return validationError(res, 'Task title is too long (max 200 characters)');
   }
   
-  // If description is provided, it should be a string
-  if (req.body.description !== undefined && 
-      (typeof req.body.description !== 'string' || req.body.description.length > 2000)) {
-    return res.status(400).json({ 
-      error: 'Task description must be a string (max 2000 characters)' 
-    });
+  if (description && description.length > 2000) {
+    return validationError(res, 'Task description is too long (max 2000 characters)');
   }
   
-  // Validate status if provided
-  if (status !== undefined) {
-    const validStatuses = ['not started', 'in progress', 'completed'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ 
-        error: 'Invalid status. Must be one of: not started, in progress, completed' 
-      });
-    }
+  const validStatuses = ['not started', 'in progress', 'completed'];
+  if (status && !validStatuses.includes(status)) {
+    return validationError(res, `Invalid status. Must be one of: ${validStatuses.join(', ')}`);
   }
   
-  // Validate priority if provided
-  if (priority !== undefined) {
-    const validPriorities = ['none', 'low', 'medium', 'high', 'urgent'];
-    if (!validPriorities.includes(priority)) {
-      return res.status(400).json({ 
-        error: 'Invalid priority. Must be one of: none, low, medium, high, urgent' 
-      });
-    }
+  const validPriorities = ['none', 'low', 'medium', 'high', 'urgent'];
+  if (priority && !validPriorities.includes(priority)) {
+    return validationError(res, `Invalid priority. Must be one of: ${validPriorities.join(', ')}`);
   }
   
-  // Validate position if provided
-  if (position !== undefined && 
-      (typeof position !== 'number' || isNaN(position) || position < 0)) {
-    return res.status(400).json({ error: 'Position must be a positive number' });
+  if (position !== undefined && (typeof position !== 'number' || position < 0)) {
+    return validationError(res, 'Position must be a positive number');
   }
   
-  // Validate customFields if provided
-  if (customFields !== undefined) {
-    if (typeof customFields !== 'object' || customFields === null) {
-      return res.status(400).json({ error: 'Custom fields must be an object' });
-    }
-    
-    // Check if we're not exceeding a reasonable size for JSON data
-    const jsonSize = JSON.stringify(customFields).length;
-    if (jsonSize > 10000) {
-      return res.status(400).json({ error: 'Custom fields data is too large' });
-    }
+  if (customFields && JSON.stringify(customFields).length > 10000) {
+    return validationError(res, 'Custom fields data is too large');
   }
   
   next();
 };
 
-// Bulk update validation function
-const validateBulkUpdateDataFn = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const validateBulkUpdateData = (req: Request, res: Response, next: NextFunction) => {
   const { taskIds, updates } = req.body;
   
-  // Validate ids array
   if (!Array.isArray(taskIds) || taskIds.length === 0) {
-    return res.status(400).json({ error: 'Task IDs array is required and must not be empty' });
+    return validationError(res, 'Task IDs array is required and must not be empty');
   }
   
-  // Validate update object
   if (!updates || typeof updates !== 'object') {
-    return res.status(400).json({ error: 'Update object is required' });
+    return validationError(res, 'Update object is required');
   }
   
-  // Ensure at least one valid field is being updated
   const { status, priority } = updates;
-  
-  if (status === undefined && priority === undefined) {
-    return res.status(400).json({ 
-      error: 'At least one field (status or priority) must be provided for bulk update' 
-    });
+  if (!status && !priority) {
+    return validationError(res, 'At least one field (status or priority) must be provided');
   }
   
-  // Validate status if provided
-  if (status !== undefined) {
-    const validStatuses = ['not started', 'in progress', 'completed'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ 
-        error: 'Invalid status. Must be one of: not started, in progress, completed' 
-      });
-    }
+  // Reuse the same validation logic
+  if (status && !['not started', 'in progress', 'completed'].includes(status)) {
+    return validationError(res, 'Invalid status');
   }
   
-  // Validate priority if provided
-  if (priority !== undefined) {
-    const validPriorities = ['none', 'low', 'medium', 'high', 'urgent'];
-    if (!validPriorities.includes(priority)) {
-      return res.status(400).json({ 
-        error: 'Invalid priority. Must be one of: none, low, medium, high, urgent' 
-      });
-    }
+  if (priority && !['none', 'low', 'medium', 'high', 'urgent'].includes(priority)) {
+    return validationError(res, 'Invalid priority');
   }
   
   next();
 };
 
-// Reorder tasks validation function
-const validateReorderDataFn = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const validateReorderData = (req: Request, res: Response, next: NextFunction) => {
   const { tasks } = req.body;
   
-  // Validate tasks array
   if (!Array.isArray(tasks) || tasks.length === 0) {
-    return res.status(400).json({ error: 'Tasks array is required and must not be empty' });
+    return validationError(res, 'Tasks array is required and must not be empty');
   }
   
-  // Check each task item has id and position
   for (const task of tasks) {
     if (!task.id || typeof task.id !== 'string') {
-      return res.status(400).json({ error: 'Each task must have a valid id' });
+      return validationError(res, 'Each task must have a valid id');
     }
     
-    if (typeof task.position !== 'number' || isNaN(task.position) || task.position < 0) {
-      return res.status(400).json({ error: 'Each task must have a valid position (non-negative number)' });
+    if (typeof task.position !== 'number' || task.position < 0) {
+      return validationError(res, 'Each task must have a valid position');
     }
   }
   
   next();
 };
-
-// Export wrapped versions of the functions
-export const validateTaskData = asyncHandler(validateTaskDataFn);
-export const validateBulkUpdateData = asyncHandler(validateBulkUpdateDataFn);
-export const validateReorderData = asyncHandler(validateReorderDataFn);
