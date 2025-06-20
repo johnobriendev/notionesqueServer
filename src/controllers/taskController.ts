@@ -1,175 +1,246 @@
-// src/controllers/taskController.ts
+// src/controllers/taskController.ts - STREAMLINED VERSION
 import { Response, NextFunction } from 'express';
+import { Task } from '@prisma/client';
+import prisma from '../models/prisma';
 import { AuthenticatedRequest } from '../types/express-custom';
-import * as taskService from '../services/taskService';
-import * as projectService from '../services/projectService';
-import { withAuthUser } from '../utils/controllerHelpers';
+import { getAuthenticatedUser } from '../utils/auth';
 
-// Create a new task
+// Helper to handle Prisma not found errors
+const handlePrismaError = (error: any, res: Response) => {
+  const err = error as any;
+  if (err.code === 'P2025') {
+    return res.status(404).json({ error: 'Resource not found or unauthorized' });
+  }
+  throw error;
+};
+
 export const createTask = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
+    const user = await getAuthenticatedUser(req);
     const { projectId } = req.params;
+    const { title, description, status = 'not started', priority = 'none', position, customFields } = req.body;
     
-    return await withAuthUser(req, res, async (user) => {
-      // Verify project exists and belongs to user
-      const project = await projectService.getProjectById(projectId, user.id);
-      
-      if (!project) {
-        return res.status(404).json({ error: 'Project not found or unauthorized' });
+    const task = await prisma.task.create({
+      data: {
+        title,
+        description,
+        status,
+        priority,
+        position,
+        customFields,
+        project: {
+          connect: { id: projectId, userId: user.id } // Ensures project ownership
+        }
       }
-      
-      const task = await taskService.createTask(projectId, req.body);
-      return res.status(201).json(task);
     });
+    
+    return res.status(201).json(task);
   } catch (error) {
+    const err = error as any;
+    if (err.message === 'Unauthorized') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: 'Project not found or unauthorized' });
+    }
     next(error);
   }
 };
 
-// Get all tasks for a project
 export const getTasksByProject = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
+    const user = await getAuthenticatedUser(req);
     const { projectId } = req.params;
     
-    return await withAuthUser(req, res, async (user) => {
-      try {
-        const tasks = await taskService.getTasksByProject(projectId, user.id);
-        return res.status(200).json(tasks);
-      } catch (error) {
-        return res.status(404).json({ error: 'Project not found or unauthorized' });
-      }
+    const tasks = await prisma.task.findMany({
+      where: {
+        projectId,
+        project: { userId: user.id } // Ensures project ownership
+      },
+      orderBy: { position: 'asc' }
     });
+    
+    return res.status(200).json(tasks);
   } catch (error) {
+    const err = error as any;
+    if (err.message === 'Unauthorized') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     next(error);
   }
 };
 
-// Get a single task by ID
 export const getTaskById = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { projectId, taskId } = req.params;
+    const user = await getAuthenticatedUser(req);
+    const { taskId } = req.params;
     
-    return await withAuthUser(req, res, async (user) => {
-      const task = await taskService.getTaskById(taskId, user.id);
-      
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found or unauthorized' });
+    const task = await prisma.task.findFirst({
+      where: {
+        id: taskId,
+        project: { userId: user.id }
       }
-      
-      return res.status(200).json(task);
     });
+    
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found or unauthorized' });
+    }
+    
+    return res.status(200).json(task);
   } catch (error) {
+    const err = error as any;
+    if (err.message === 'Unauthorized') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     next(error);
   }
 };
 
-// Update a task
 export const updateTask = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { projectId, taskId } = req.params;
+    const user = await getAuthenticatedUser(req);
+    const { taskId } = req.params;
+    const { title, description, status, priority, position, customFields } = req.body;
     
-    return await withAuthUser(req, res, async (user) => {
-      const task = await taskService.updateTask(taskId, user.id, req.body);
-      
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found or unauthorized' });
-      }
+    try {
+      const task = await prisma.task.update({
+        where: {
+          id: taskId,
+          project: { userId: user.id }
+        },
+        data: { title, description, status, priority, position, customFields }
+      });
       
       return res.status(200).json(task);
-    });
+    } catch (prismaError) {
+      return handlePrismaError(prismaError, res);
+    }
   } catch (error) {
+    const err = error as any;
+    if (err.message === 'Unauthorized') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     next(error);
   }
 };
 
-// Delete a task
 export const deleteTask = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { projectId, taskId } = req.params;
+    const user = await getAuthenticatedUser(req);
+    const { taskId } = req.params;
     
-    return await withAuthUser(req, res, async (user) => {
-      const task = await taskService.deleteTask(taskId, user.id);
-      
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found or unauthorized' });
-      }
+    try {
+      await prisma.task.delete({
+        where: {
+          id: taskId,
+          project: { userId: user.id }
+        }
+      });
       
       return res.status(204).send();
-    });
+    } catch (prismaError) {
+      return handlePrismaError(prismaError, res);
+    }
   } catch (error) {
+    const err = error as any;
+    if (err.message === 'Unauthorized') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     next(error);
   }
 };
 
-// Bulk update tasks (status, priority)
 export const bulkUpdateTasks = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { projectId } = req.params;
-
-    return await withAuthUser(req, res, async (user) => {
-      try {
-        const count = await taskService.bulkUpdateTasks(user.id, req.body);
-        return res.status(200).json({ 
-          message: `Successfully updated ${count} tasks`,
-          count
-        });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-        return res.status(400).json({ error: errorMessage });
-      }
+    const user = await getAuthenticatedUser(req);
+    const { taskIds, updates } = req.body;
+    
+    // Single updateMany operation with ownership check
+    const result = await prisma.task.updateMany({
+      where: {
+        id: { in: taskIds },
+        project: { userId: user.id }
+      },
+      data: updates
+    });
+    
+    if (result.count === 0) {
+      return res.status(404).json({ error: 'No tasks found or unauthorized' });
+    }
+    
+    return res.status(200).json({
+      message: `Successfully updated ${result.count} tasks`,
+      count: result.count
     });
   } catch (error) {
+    const err = error as any;
+    if (err.message === 'Unauthorized') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     next(error);
   }
 };
 
-// Reorder tasks within a project
 export const reorderTasks = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
+    const user = await getAuthenticatedUser(req);
     const { projectId } = req.params;
+    const { tasks } = req.body;
     
-    return await withAuthUser(req, res, async (user) => {
-      try {
-        const tasks = await taskService.reorderTasks(projectId, user.id, req.body);
-        return res.status(200).json(tasks);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-        return res.status(400).json({ error: errorMessage });
-      }
-    });
+    // Use transaction for atomic updates
+    const updatedTasks = await prisma.$transaction(
+      tasks.map((task: { id: string; position: number }) =>
+        prisma.task.update({
+          where: {
+            id: task.id,
+            projectId,
+            project: { userId: user.id }
+          },
+          data: { position: task.position }
+        })
+      )
+    );
+    
+    return res.status(200).json(updatedTasks);
   } catch (error) {
+    const err = error as any;
+    if (err.message === 'Unauthorized') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: 'One or more tasks not found or unauthorized' });
+    }
     next(error);
   }
 };
-
 
 export const deleteMultipleTasks = async (
   req: AuthenticatedRequest,
@@ -177,54 +248,66 @@ export const deleteMultipleTasks = async (
   next: NextFunction
 ) => {
   try {
+    const user = await getAuthenticatedUser(req);
     const { projectId } = req.params;
     const { taskIds } = req.body;
     
-    return await withAuthUser(req, res, async (user) => {
-      try {
-        // Create this method in your taskService if it doesn't exist
-        const count = await taskService.deleteMultipleTasks(projectId, user.id, taskIds);
-        return res.status(200).json({ 
-          message: `Successfully deleted ${count} tasks`,
-          count
-        });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-        return res.status(400).json({ error: errorMessage });
+    const result = await prisma.task.deleteMany({
+      where: {
+        id: { in: taskIds },
+        projectId,
+        project: { userId: user.id }
       }
     });
+    
+    if (result.count === 0) {
+      return res.status(404).json({ error: 'No tasks found or unauthorized' });
+    }
+    
+    return res.status(200).json({
+      message: `Successfully deleted ${result.count} tasks`,
+      count: result.count
+    });
   } catch (error) {
+    const err = error as any;
+    if (err.message === 'Unauthorized') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     next(error);
   }
 };
 
-
-// Update task priority
 export const updateTaskPriority = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { projectId, taskId } = req.params;
+    const user = await getAuthenticatedUser(req);
+    const { taskId } = req.params;
     const { priority, destinationIndex } = req.body;
     
-    return await withAuthUser(req, res, async (user) => {
-      // Create a simpler update object for the service
-      const updateData = {
-        priority,
-        position: destinationIndex // Optional position
-      };
-      
-      const task = await taskService.updateTask(taskId, user.id, updateData);
-      
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found or unauthorized' });
-      }
+    try {
+      const task = await prisma.task.update({
+        where: {
+          id: taskId,
+          project: { userId: user.id }
+        },
+        data: {
+          priority,
+          ...(destinationIndex !== undefined && { position: destinationIndex })
+        }
+      });
       
       return res.status(200).json(task);
-    });
+    } catch (prismaError) {
+      return handlePrismaError(prismaError, res);
+    }
   } catch (error) {
+    const err = error as any;
+    if (err.message === 'Unauthorized') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     next(error);
   }
 };

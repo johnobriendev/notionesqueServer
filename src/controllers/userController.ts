@@ -1,8 +1,19 @@
-// src/controllers/userController.ts
+// src/controllers/userController.ts 
 import { Response, NextFunction } from 'express';
-import * as userService from '../services/userService';
+import { User } from '@prisma/client'; 
+import prisma from '../models/prisma';
 import { AuthenticatedRequest } from '../types/express-custom';
-import { withAuthUser } from '../utils/controllerHelpers';
+
+async function getOrCreateUser(auth0Id: string, email: string): Promise<User> {
+  return prisma.user.upsert({
+    where: { authProviderId: auth0Id },
+    update: {}, 
+    create: {
+      authProviderId: auth0Id,
+      email,
+    }
+  });
+}
 
 export const getCurrentUser = async (
   req: AuthenticatedRequest,
@@ -15,8 +26,7 @@ export const getCurrentUser = async (
     }
 
     const { auth0Id, email } = req.user;
-    
-    const user = await userService.findOrCreateUser(auth0Id, email);
+    const user = await getOrCreateUser(auth0Id, email);
     
     return res.status(200).json(user);
   } catch (error) {
@@ -30,12 +40,21 @@ export const updateUser = async (
   next: NextFunction
 ) => {
   try {
-    return await withAuthUser(req, res, async (user) => {
-      const { name } = req.body;
-      const updatedUser = await userService.updateUserProfile(user.id, { name });
-      
-      return res.status(200).json(updatedUser);
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { auth0Id, email } = req.user;
+    const { name } = req.body;
+    
+    // Get user first, then update
+    const user = await getOrCreateUser(auth0Id, email);
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { name }
     });
+    
+    return res.status(200).json(updatedUser);
   } catch (error) {
     next(error);
   }
