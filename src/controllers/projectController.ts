@@ -1,4 +1,4 @@
-// src/controllers/projectController.ts - STREAMLINED VERSION
+// src/controllers/projectController.ts 
 import { Response, NextFunction } from 'express';
 import { Project } from '@prisma/client'; // Use Prisma types
 import prisma from '../models/prisma';

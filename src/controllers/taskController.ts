@@ -1,4 +1,4 @@
-// src/controllers/taskController.ts - STREAMLINED VERSION
+// src/controllers/taskController.ts 
 import { Response, NextFunction } from 'express';
 import { Task } from '@prisma/client';
 import prisma from '../models/prisma';
@@ -22,10 +22,11 @@ export const createTask = async (
   try {
     const user = await getAuthenticatedUser(req);
     const { projectId } = req.params;
-    const { title, description, status = 'not started', priority = 'none', position, customFields } = req.body;
+    const { id, title, description, status = 'not started', priority = 'none', position, customFields } = req.body;
     
     const task = await prisma.task.create({
       data: {
+        ...(id && { id }),
         title,
         description,
         status,
