@@ -4,6 +4,8 @@ import { Response, NextFunction } from 'express';
 import prisma from '../models/prisma';
 import { AuthenticatedRequest } from '../types/express-custom';
 import { getAuthenticatedUser } from '../utils/auth';
+import { validateProjectAccess } from '../utils/permissions';
+
 
 // Helper to handle Prisma not found errors
 const handlePrismaError = (error: any, res: Response) => {
@@ -24,6 +26,12 @@ export const createTask = async (
     const { projectId } = req.params;
     const { id, title, description, status = 'not started', priority = 'none', position, customFields } = req.body;
     
+    // Check if user can write to this project
+    const access = await validateProjectAccess(user.id, projectId, 'write');
+    if (!access.success) {
+      return res.status(403).json({ error: access.error });
+    }
+    
     const task = await prisma.task.create({
       data: {
         ...(id && { id }),
@@ -33,9 +41,9 @@ export const createTask = async (
         priority,
         position,
         customFields,
-        project: {
-          connect: { id: projectId, userId: user.id } // Ensures project ownership
-        }
+        projectId,
+        version: 1,
+        updatedBy: user.email
       }
     });
     
@@ -61,11 +69,14 @@ export const getTasksByProject = async (
     const user = await getAuthenticatedUser(req);
     const { projectId } = req.params;
     
+    // Check if user can read this project
+    const access = await validateProjectAccess(user.id, projectId, 'read');
+    if (!access.success) {
+      return res.status(403).json({ error: access.error });
+    }
+    
     const tasks = await prisma.task.findMany({
-      where: {
-        projectId,
-        project: { userId: user.id } // Ensures project ownership
-      },
+      where: { projectId },
       orderBy: { position: 'asc' }
     });
     
@@ -89,14 +100,18 @@ export const getTaskById = async (
     const { taskId } = req.params;
     
     const task = await prisma.task.findFirst({
-      where: {
-        id: taskId,
-        project: { userId: user.id }
-      }
+      where: { id: taskId },
+      include: { project: true }
     });
     
     if (!task) {
-      return res.status(404).json({ error: 'Task not found or unauthorized' });
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    // Check if user can read this project
+    const access = await validateProjectAccess(user.id, task.projectId, 'read');
+    if (!access.success) {
+      return res.status(403).json({ error: access.error });
     }
     
     return res.status(200).json(task);
@@ -117,15 +132,45 @@ export const updateTask = async (
   try {
     const user = await getAuthenticatedUser(req);
     const { taskId } = req.params;
-    const { title, description, status, priority, position, customFields } = req.body;
+    const { title, description, status, priority, position, customFields, version } = req.body;
+    
+    // Get current task
+    const currentTask = await prisma.task.findFirst({
+      where: { id: taskId },
+      include: { project: true }
+    });
+    
+    if (!currentTask) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    // Check if user can write to this project
+    const access = await validateProjectAccess(user.id, currentTask.projectId, 'write');
+    if (!access.success) {
+      return res.status(403).json({ error: access.error });
+    }
+    
+    // Simple version conflict check
+    if (version && currentTask.version !== version) {
+      return res.status(409).json({
+        error: `Task was updated by ${currentTask.updatedBy || 'another user'}. Refreshing...`,
+        currentTask
+      });
+    }
     
     try {
       const task = await prisma.task.update({
-        where: {
-          id: taskId,
-          project: { userId: user.id }
-        },
-        data: { title, description, status, priority, position, customFields }
+        where: { id: taskId },
+        data: { 
+          title, 
+          description, 
+          status, 
+          priority, 
+          position, 
+          customFields,
+          version: { increment: 1 },
+          updatedBy: user.email
+        }
       });
       
       return res.status(200).json(task);
@@ -150,12 +195,24 @@ export const deleteTask = async (
     const user = await getAuthenticatedUser(req);
     const { taskId } = req.params;
     
+    // Get current task
+    const currentTask = await prisma.task.findFirst({
+      where: { id: taskId }
+    });
+    
+    if (!currentTask) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    // Check if user can write to this project
+    const access = await validateProjectAccess(user.id, currentTask.projectId, 'write');
+    if (!access.success) {
+      return res.status(403).json({ error: access.error });
+    }
+    
     try {
       await prisma.task.delete({
-        where: {
-          id: taskId,
-          project: { userId: user.id }
-        }
+        where: { id: taskId }
       });
       
       return res.status(204).send();
@@ -180,14 +237,42 @@ export const bulkUpdateTasks = async (
     const user = await getAuthenticatedUser(req);
     const { taskIds, updates } = req.body;
     
-    // Single updateMany operation with ownership check
+    // Get project ID from first task to check permissions
+    const firstTask = await prisma.task.findFirst({
+      where: { id: taskIds[0] }
+    });
+    
+    if (!firstTask) {
+      return res.status(404).json({ error: 'Tasks not found' });
+    }
+    
+    // Check if user can write to this project
+    const access = await validateProjectAccess(user.id, firstTask.projectId, 'write');
+    if (!access.success) {
+      return res.status(403).json({ error: access.error });
+    }
+    
+    // Update all tasks
     const result = await prisma.task.updateMany({
       where: {
         id: { in: taskIds },
-        project: { userId: user.id }
+        projectId: firstTask.projectId
       },
-      data: updates
+      data: {
+        ...updates,
+        updatedBy: user.email
+      }
     });
+    
+    // Update versions separately (updateMany doesn't support increment)
+    await prisma.$transaction(
+      taskIds.map((taskId: string) =>
+        prisma.task.update({
+          where: { id: taskId },
+          data: { version: { increment: 1 } }
+        })
+      )
+    );
     
     if (result.count === 0) {
       return res.status(404).json({ error: 'No tasks found or unauthorized' });
@@ -216,16 +301,25 @@ export const reorderTasks = async (
     const { projectId } = req.params;
     const { tasks } = req.body;
     
+    // Check if user can write to this project
+    const access = await validateProjectAccess(user.id, projectId, 'write');
+    if (!access.success) {
+      return res.status(403).json({ error: access.error });
+    }
+    
     // Use transaction for atomic updates
     const updatedTasks = await prisma.$transaction(
       tasks.map((task: { id: string; position: number }) =>
         prisma.task.update({
           where: {
             id: task.id,
-            projectId,
-            project: { userId: user.id }
+            projectId
           },
-          data: { position: task.position }
+          data: { 
+            position: task.position,
+            version: { increment: 1 },
+            updatedBy: user.email
+          }
         })
       )
     );
@@ -253,11 +347,16 @@ export const deleteMultipleTasks = async (
     const { projectId } = req.params;
     const { taskIds } = req.body;
     
+    // Check if user can write to this project
+    const access = await validateProjectAccess(user.id, projectId, 'write');
+    if (!access.success) {
+      return res.status(403).json({ error: access.error });
+    }
+    
     const result = await prisma.task.deleteMany({
       where: {
         id: { in: taskIds },
-        projectId,
-        project: { userId: user.id }
+        projectId
       }
     });
     
@@ -286,17 +385,39 @@ export const updateTaskPriority = async (
   try {
     const user = await getAuthenticatedUser(req);
     const { taskId } = req.params;
-    const { priority, destinationIndex } = req.body;
+    const { priority, destinationIndex, version } = req.body;
+    
+    // Get current task
+    const currentTask = await prisma.task.findFirst({
+      where: { id: taskId }
+    });
+    
+    if (!currentTask) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    // Check if user can write to this project
+    const access = await validateProjectAccess(user.id, currentTask.projectId, 'write');
+    if (!access.success) {
+      return res.status(403).json({ error: access.error });
+    }
+    
+    // Simple version conflict check
+    if (version && currentTask.version !== version) {
+      return res.status(409).json({
+        error: `Task was updated by ${currentTask.updatedBy || 'another user'}. Refreshing...`,
+        currentTask
+      });
+    }
     
     try {
       const task = await prisma.task.update({
-        where: {
-          id: taskId,
-          project: { userId: user.id }
-        },
+        where: { id: taskId },
         data: {
           priority,
-          ...(destinationIndex !== undefined && { position: destinationIndex })
+          ...(destinationIndex !== undefined && { position: destinationIndex }),
+          version: { increment: 1 },
+          updatedBy: user.email
         }
       });
       
