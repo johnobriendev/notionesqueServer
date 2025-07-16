@@ -3,6 +3,7 @@ import { Router } from 'express';
 import userRoutes from './userRoutes';
 import projectRoutes from './projectRoutes';
 import taskRoutes from './taskRoutes';
+import teamRoutes from './teamRoutes'
 
 
 const router = Router();
@@ -17,6 +18,9 @@ router.use('/users', userRoutes);
 
 // Project routes
 router.use('/projects', projectRoutes);
+
+// Team collaboration routes
+router.use('/team', teamRoutes);
 
 // Task routes
 //task routes are now under projects
