@@ -1,9 +1,9 @@
-// src/utils/auth.ts - NEW FILE
-import { User } from '@prisma/client';
+// src/utils/auth.ts 
+//import { User } from '@prisma/client';
 import prisma from '../models/prisma';
 import { AuthenticatedRequest } from '../types/express-custom';
 
-export async function getAuthenticatedUser(req: AuthenticatedRequest): Promise<User> {
+export async function getAuthenticatedUser(req: AuthenticatedRequest){
   if (!req.user) {
     throw new Error('Unauthorized');
   }

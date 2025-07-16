@@ -1,10 +1,10 @@
 // src/controllers/userController.ts 
 import { Response, NextFunction } from 'express';
-import { User } from '@prisma/client'; 
+//import { User } from '@prisma/client'; 
 import prisma from '../models/prisma';
 import { AuthenticatedRequest } from '../types/express-custom';
 
-async function getOrCreateUser(auth0Id: string, email: string): Promise<User> {
+async function getOrCreateUser(auth0Id: string, email: string){
   return prisma.user.upsert({
     where: { authProviderId: auth0Id },
     update: {}, 

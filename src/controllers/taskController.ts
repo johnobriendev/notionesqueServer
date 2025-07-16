@@ -1,6 +1,6 @@
 // src/controllers/taskController.ts 
 import { Response, NextFunction } from 'express';
-import { Task } from '@prisma/client';
+//import { Task } from '@prisma/client';
 import prisma from '../models/prisma';
 import { AuthenticatedRequest } from '../types/express-custom';
 import { getAuthenticatedUser } from '../utils/auth';
