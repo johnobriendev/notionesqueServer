@@ -17,6 +17,8 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   projects       Project[]
+  collaborations    ProjectCollaborator[]
+  sentInvitations   ProjectInvitation[] @relation("SentInvitations")
 }
 
 model Project {
@@ -28,6 +30,8 @@ model Project {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks       Task[]
+  collaborators ProjectCollaborator[]
+  invitations   ProjectInvitation[]
 
   @@index([userId])
 }
@@ -44,7 +48,47 @@ model Task {
   projectId    String
   project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   customFields Json?    // For storing Record<string, string | number | boolean>
+  version      Int      @default(1)     // Starts at 1 for all existing tasks
+  updatedBy    String?                   // Nullable - existing tasks will be null
 
   @@index([projectId])
   @@index([priority, position]) // For efficient sorting in Kanban view
+}
+
+// Team members for each project
+model ProjectCollaborator {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  role      String   // 'editor' or 'viewer'
+  joinedAt  DateTime @default(now())
+  
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, userId]) // Prevent duplicate collaborators
+  @@index([projectId])
+  @@index([userId])
+}
+
+// Pending invitations
+model ProjectInvitation {
+  id            String   @id @default(uuid())
+  projectId     String
+  senderUserId  String
+  receiverEmail String
+  role          String   // 'editor' or 'viewer'
+  token         String   @unique // For secure invitation URLs
+  status        String   @default("pending") // 'pending', 'accepted', 'declined', 'expired'
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime // 7 days from creation
+  
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sender        User     @relation("SentInvitations", fields: [senderUserId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, receiverEmail, status]) // Prevent duplicate pending invitations to same email
+  @@index([projectId])
+  @@index([receiverEmail])
+  @@index([token])
+  @@index([status])
 }
