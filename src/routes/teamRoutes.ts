@@ -10,6 +10,7 @@ import {
   removeTeamMember,
   updateMemberRole
 } from '../controllers/teamController';
+import { inviteRateLimit } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -18,7 +19,7 @@ router.use(checkJwt);
 router.use(extractUserInfo);
 
 
-router.post('/projects/:id/invite', inviteUserToProject as any);
+router.post('/projects/:id/invite',inviteRateLimit as any, inviteUserToProject as any);
 
 router.get('/users/invitations', getUserInvitations as any);
 
