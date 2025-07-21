@@ -169,15 +169,34 @@ export const acceptInvitation = async (
       return res.status(403).json({ error: 'This invitation is not for you' });
     }
     
-    // Create collaborator relationship and update invitation
+    // 🔧 FIX: Delete any existing invitations with 'accepted' status first
     await prisma.$transaction([
-      prisma.projectCollaborator.create({
-        data: {
+      // Delete any existing accepted invitations for this project/email
+      prisma.projectInvitation.deleteMany({
+        where: {
+          projectId: invitation.projectId,
+          receiverEmail: invitation.receiverEmail,
+          status: 'accepted'
+        }
+      }),
+      // Create collaborator relationship
+      prisma.projectCollaborator.upsert({
+        where: {
+          projectId_userId: {
+            projectId: invitation.projectId,
+            userId: user.id
+          }
+        },
+        update: {
+          role: invitation.role // Update role if user was previously a collaborator
+        },
+        create: {
           projectId: invitation.projectId,
           userId: user.id,
           role: invitation.role
         }
       }),
+      // Update current invitation status
       prisma.projectInvitation.update({
         where: { id: invitation.id },
         data: { status: 'accepted' }
