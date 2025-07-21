@@ -151,10 +151,18 @@ export const updateTask = async (
     }
     
     // Simple version conflict check
-    if (version && currentTask.version !== version) {
+      if (version && currentTask.version !== version) {
       return res.status(409).json({
-        error: `Task was updated by ${currentTask.updatedBy || 'another user'}. Refreshing...`,
-        currentTask
+        error: 'VERSION_CONFLICT',
+        message: `This task was modified by ${currentTask.updatedBy || 'another user'} while you were editing it.`,
+        conflict: {
+          taskId: currentTask.id,
+          expectedVersion: version,
+          currentVersion: currentTask.version,
+          lastUpdatedBy: currentTask.updatedBy,
+          lastUpdatedAt: currentTask.updatedAt,
+          currentTask: currentTask
+        }
       });
     }
     
@@ -403,10 +411,18 @@ export const updateTaskPriority = async (
     }
     
     // Simple version conflict check
-    if (version && currentTask.version !== version) {
+     if (version && currentTask.version !== version) {
       return res.status(409).json({
-        error: `Task was updated by ${currentTask.updatedBy || 'another user'}. Refreshing...`,
-        currentTask
+        error: 'VERSION_CONFLICT',
+        message: `This task was modified by ${currentTask.updatedBy || 'another user'} while you were editing it.`,
+        conflict: {
+          taskId: currentTask.id,
+          expectedVersion: version,
+          currentVersion: currentTask.version,
+          lastUpdatedBy: currentTask.updatedBy,
+          lastUpdatedAt: currentTask.updatedAt,
+          currentTask: currentTask
+        }
       });
     }
     
