@@ -9,7 +9,7 @@ import taskRoutes from './taskRoutes';
 const router = Router();
 
 router.use(checkJwt, extractUserInfo);
-router.use(projectRateLimit as any);
+router.use(projectRateLimit);
 
 router.get('/', projectController.getAllProjects as any);
 router.get('/:id', projectController.getProjectById as any);

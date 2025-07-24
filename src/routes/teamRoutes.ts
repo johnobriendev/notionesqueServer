@@ -17,10 +17,10 @@ const router = Router();
 // Apply authentication to all routes
 router.use(checkJwt);
 router.use(extractUserInfo);
-router.use(teamRateLimit as any);
+router.use(teamRateLimit);
 
 
-router.post('/projects/:id/invite',inviteRateLimit as any, inviteUserToProject as any);
+router.post('/projects/:id/invite',inviteRateLimit, inviteUserToProject as any);
 
 router.get('/users/invitations', getUserInvitations as any);
 

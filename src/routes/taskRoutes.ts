@@ -13,7 +13,7 @@ const router = Router({ mergeParams: true });
 
 // Apply auth middleware to all routes
 router.use(checkJwt, extractUserInfo);
-router.use(taskRateLimit as any); 
+router.use(taskRateLimit); 
 
 // Project task routes - cast each controller function
 router.get('/', taskController.getTasksByProject as any);
