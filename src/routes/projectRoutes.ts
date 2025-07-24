@@ -1,6 +1,7 @@
 // src/routes/projectRoutes.ts
 import { Router } from 'express';
 import { checkJwt, extractUserInfo } from '../middleware/auth';
+import { projectRateLimit } from '../middleware/rateLimiter'; 
 import * as projectController from '../controllers/projectController';
 import { validateProjectData } from '../middleware/validation';
 import taskRoutes from './taskRoutes';
@@ -8,6 +9,7 @@ import taskRoutes from './taskRoutes';
 const router = Router();
 
 router.use(checkJwt, extractUserInfo);
+router.use(projectRateLimit as any);
 
 router.get('/', projectController.getAllProjects as any);
 router.get('/:id', projectController.getProjectById as any);

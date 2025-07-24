@@ -1,6 +1,7 @@
 // src/routes/teamRoutes.ts
 import { Router } from 'express';
 import { checkJwt, extractUserInfo } from '../middleware/auth';
+import { teamRateLimit, inviteRateLimit } from '../middleware/rateLimiter';
 import {
   inviteUserToProject,
   getUserInvitations,
@@ -10,13 +11,13 @@ import {
   removeTeamMember,
   updateMemberRole
 } from '../controllers/teamController';
-import { inviteRateLimit } from '../middleware/rateLimiter';
 
 const router = Router();
 
 // Apply authentication to all routes
 router.use(checkJwt);
 router.use(extractUserInfo);
+router.use(teamRateLimit as any);
 
 
 router.post('/projects/:id/invite',inviteRateLimit as any, inviteUserToProject as any);
