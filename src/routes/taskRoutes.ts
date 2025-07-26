@@ -16,18 +16,18 @@ router.use(checkJwt, extractUserInfo);
 router.use(taskRateLimit); 
 
 // Project task routes - cast each controller function
-router.get('/', taskController.getTasksByProject as any);
-router.post('/', validateTaskData, taskController.createTask as any);
+router.get('/', taskController.getTasksByProject);
+router.post('/', validateTaskData, taskController.createTask);
 
 // Individual task routes
-router.get('/:taskId', taskController.getTaskById as any);
-router.patch('/:taskId', validateTaskData, taskController.updateTask as any);
-router.patch('/:taskId/priority', taskController.updateTaskPriority as any);
-router.delete('/:taskId', taskController.deleteTask as any);
+router.get('/:taskId', taskController.getTaskById);
+router.patch('/:taskId', validateTaskData, taskController.updateTask);
+router.patch('/:taskId/priority', taskController.updateTaskPriority);
+router.delete('/:taskId', taskController.deleteTask);
 
 // Bulk operations
-router.put('/bulk', validateBulkUpdateData, taskController.bulkUpdateTasks as any);
-router.put('/reorder', validateReorderData, taskController.reorderTasks as any);
-router.delete('/', taskController.deleteMultipleTasks as any);
+router.put('/bulk', validateBulkUpdateData, taskController.bulkUpdateTasks);
+router.put('/reorder', validateReorderData, taskController.reorderTasks);
+router.delete('/', taskController.deleteMultipleTasks);
 
 export default router;

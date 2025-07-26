@@ -1,30 +1,25 @@
 // src/controllers/projectController.ts 
 import { Response, NextFunction } from 'express';
-//import { Project } from '@prisma/client'; // Use Prisma types
 import prisma from '../models/prisma';
-import { AuthenticatedRequest } from '../types/express-custom';
+import { AuthenticatedRequest, AuthenticatedController } from '../types/express-custom';
 import { getAuthenticatedUser } from '../utils/auth';
 import { getUserAccessibleProjects } from '../utils/permissions';
 
 
 
-export const createProject = async (
+export const createProject: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
-
-    
     const user = await getAuthenticatedUser(req);
     
     const { name, description } = req.body;
     
-    
     const project = await prisma.project.create({
       data: { name, description, userId: user.id }
     });
-    
     
     const response = {
       ...project,
@@ -32,22 +27,22 @@ export const createProject = async (
       canWrite: true      
     };
    
-    return res.status(201).json(response);
+    res.status(201).json(response);
   } catch (error) {
-    
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     next(error);
   }
 };
 
-export const getAllProjects = async (
+export const getAllProjects: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
 
@@ -59,21 +54,22 @@ export const getAllProjects = async (
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
 
-    return res.status(200).json(allProjects);
+    res.status(200).json(allProjects);
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     next(error);
   }
 };
 
-export const getProjectById = async (
+export const getProjectById: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
     const { id: projectId } = req.params;
@@ -84,12 +80,14 @@ export const getProjectById = async (
     });
 
     if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
+      res.status(404).json({ error: 'Project not found' });
+      return;
     }
 
     // Check if user is owner
     if (project.userId === user.id) {
-      return res.status(200).json({ ...project, userRole: 'owner', canWrite: true });
+      res.status(200).json({ ...project, userRole: 'owner', canWrite: true });
+      return;
     }
 
     // Check if user is collaborator
@@ -98,28 +96,30 @@ export const getProjectById = async (
     });
 
     if (collaborator) {
-      return res.status(200).json({
+      res.status(200).json({
         ...project,
         userRole: collaborator.role,
         canWrite: collaborator.role === 'editor'
       });
+      return;
     }
 
-    return res.status(403).json({ error: 'Access denied' });
+    res.status(403).json({ error: 'Access denied' });
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     next(error);
   }
 };
 
-export const updateProject = async (
+export const updateProject: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
     const { name, description } = req.body;
@@ -131,7 +131,8 @@ export const updateProject = async (
     });
 
     if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
+      res.status(404).json({ error: 'Project not found' });
+      return;
     }
 
     // Check if user is owner
@@ -140,7 +141,8 @@ export const updateProject = async (
         where: { id: projectId },
         data: { name, description }
       });
-      return res.status(200).json(updatedProject);
+      res.status(200).json(updatedProject);
+      return;
     }
 
     // Check if user is editor
@@ -153,24 +155,26 @@ export const updateProject = async (
         where: { id: projectId },
         data: { name, description }
       });
-      return res.status(200).json(updatedProject);
+      res.status(200).json(updatedProject);
+      return;
     }
 
-    return res.status(403).json({ error: 'Access denied' });
+    res.status(403).json({ error: 'Access denied' });
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     next(error);
   }
 };
 
-export const deleteProject = async (
+export const deleteProject: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
     const { id: projectId } = req.params;
@@ -184,18 +188,20 @@ export const deleteProject = async (
         }
       });
 
-      return res.status(204).send();
+      res.status(204).send();
     } catch (prismaError) {
       const err = prismaError as any;
       if (err.code === 'P2025') {
-        return res.status(404).json({ error: 'Project not found or unauthorized' });
+        res.status(404).json({ error: 'Project not found or unauthorized' });
+        return;
       }
       throw prismaError;
     }
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     next(error);
   }

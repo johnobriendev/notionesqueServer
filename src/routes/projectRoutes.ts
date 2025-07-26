@@ -11,11 +11,11 @@ const router = Router();
 router.use(checkJwt, extractUserInfo);
 router.use(projectRateLimit);
 
-router.get('/', projectController.getAllProjects as any);
-router.get('/:id', projectController.getProjectById as any);
-router.post('/', validateProjectData, projectController.createProject as any);
-router.patch('/:id', validateProjectData, projectController.updateProject as any);
-router.delete('/:id', projectController.deleteProject as any);
+router.get('/', projectController.getAllProjects);
+router.get('/:id', projectController.getProjectById);
+router.post('/', validateProjectData, projectController.createProject);
+router.patch('/:id', validateProjectData, projectController.updateProject);
+router.delete('/:id', projectController.deleteProject);
 
 // Nest task routes under projects
 router.use('/:projectId/tasks', taskRoutes);

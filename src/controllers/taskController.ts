@@ -1,8 +1,7 @@
 // src/controllers/taskController.ts 
 import { Response, NextFunction } from 'express';
-//import { Task } from '@prisma/client';
 import prisma from '../models/prisma';
-import { AuthenticatedRequest } from '../types/express-custom';
+import { AuthenticatedRequest, AuthenticatedController } from '../types/express-custom';
 import { getAuthenticatedUser } from '../utils/auth';
 import { validateProjectAccess } from '../utils/permissions';
 
@@ -16,11 +15,11 @@ const handlePrismaError = (error: any, res: Response) => {
   throw error;
 };
 
-export const createTask = async (
+export const createTask: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
     const { projectId } = req.params;
@@ -29,7 +28,8 @@ export const createTask = async (
     // Check if user can write to this project
     const access = await validateProjectAccess(user.id, projectId, 'write');
     if (!access.success) {
-      return res.status(403).json({ error: access.error });
+      res.status(403).json({ error: access.error });
+      return;
     }
     
     const task = await prisma.task.create({
@@ -47,24 +47,26 @@ export const createTask = async (
       }
     });
     
-    return res.status(201).json(task);
+    res.status(201).json(task);
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     if (err.code === 'P2025') {
-      return res.status(404).json({ error: 'Project not found or unauthorized' });
+      res.status(404).json({ error: 'Project not found or unauthorized' });
+      return;
     }
     next(error);
   }
 };
 
-export const getTasksByProject = async (
+export const getTasksByProject: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
     const { projectId } = req.params;
@@ -72,7 +74,8 @@ export const getTasksByProject = async (
     // Check if user can read this project
     const access = await validateProjectAccess(user.id, projectId, 'read');
     if (!access.success) {
-      return res.status(403).json({ error: access.error });
+      res.status(403).json({ error: access.error });
+      return;
     }
     
     const tasks = await prisma.task.findMany({
@@ -80,21 +83,22 @@ export const getTasksByProject = async (
       orderBy: { position: 'asc' }
     });
     
-    return res.status(200).json(tasks);
+    res.status(200).json(tasks);
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     next(error);
   }
 };
 
-export const getTaskById = async (
+export const getTaskById: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
     const { taskId } = req.params;
@@ -105,30 +109,33 @@ export const getTaskById = async (
     });
     
     if (!task) {
-      return res.status(404).json({ error: 'Task not found' });
+      res.status(404).json({ error: 'Task not found' });
+      return;
     }
     
     // Check if user can read this project
     const access = await validateProjectAccess(user.id, task.projectId, 'read');
     if (!access.success) {
-      return res.status(403).json({ error: access.error });
+      res.status(403).json({ error: access.error });
+      return;
     }
     
-    return res.status(200).json(task);
+    res.status(200).json(task);
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     next(error);
   }
 };
 
-export const updateTask = async (
+export const updateTask: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
     const { taskId } = req.params;
@@ -141,18 +148,20 @@ export const updateTask = async (
     });
     
     if (!currentTask) {
-      return res.status(404).json({ error: 'Task not found' });
+      res.status(404).json({ error: 'Task not found' });
+      return;
     }
     
     // Check if user can write to this project
     const access = await validateProjectAccess(user.id, currentTask.projectId, 'write');
     if (!access.success) {
-      return res.status(403).json({ error: access.error });
+      res.status(403).json({ error: access.error });
+      return;
     }
     
     // Simple version conflict check
-      if (version && currentTask.version !== version) {
-      return res.status(409).json({
+    if (version && currentTask.version !== version) {
+      res.status(409).json({
         error: 'VERSION_CONFLICT',
         message: `This task was modified by ${currentTask.updatedBy || 'another user'} while you were editing it.`,
         conflict: {
@@ -164,6 +173,7 @@ export const updateTask = async (
           currentTask: currentTask
         }
       });
+      return;
     }
     
     try {
@@ -181,24 +191,25 @@ export const updateTask = async (
         }
       });
       
-      return res.status(200).json(task);
+      res.status(200).json(task);
     } catch (prismaError) {
-      return handlePrismaError(prismaError, res);
+      if (handlePrismaError(prismaError, res)) return;
     }
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     next(error);
   }
 };
 
-export const deleteTask = async (
+export const deleteTask: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
     const { taskId } = req.params;
@@ -209,13 +220,15 @@ export const deleteTask = async (
     });
     
     if (!currentTask) {
-      return res.status(404).json({ error: 'Task not found' });
+      res.status(404).json({ error: 'Task not found' });
+      return;
     }
     
     // Check if user can write to this project
     const access = await validateProjectAccess(user.id, currentTask.projectId, 'write');
     if (!access.success) {
-      return res.status(403).json({ error: access.error });
+      res.status(403).json({ error: access.error });
+      return;
     }
     
     try {
@@ -223,24 +236,25 @@ export const deleteTask = async (
         where: { id: taskId }
       });
       
-      return res.status(204).send();
+      res.status(204).send();
     } catch (prismaError) {
-      return handlePrismaError(prismaError, res);
+      if (handlePrismaError(prismaError, res)) return;
     }
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     next(error);
   }
 };
 
-export const bulkUpdateTasks = async (
+export const bulkUpdateTasks: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
     const { taskIds, updates } = req.body;
@@ -251,13 +265,15 @@ export const bulkUpdateTasks = async (
     });
     
     if (!firstTask) {
-      return res.status(404).json({ error: 'Tasks not found' });
+      res.status(404).json({ error: 'Tasks not found' });
+      return;
     }
     
     // Check if user can write to this project
     const access = await validateProjectAccess(user.id, firstTask.projectId, 'write');
     if (!access.success) {
-      return res.status(403).json({ error: access.error });
+      res.status(403).json({ error: access.error });
+      return;
     }
     
     // Update all tasks
@@ -283,27 +299,29 @@ export const bulkUpdateTasks = async (
     );
     
     if (result.count === 0) {
-      return res.status(404).json({ error: 'No tasks found or unauthorized' });
+      res.status(404).json({ error: 'No tasks found or unauthorized' });
+      return;
     }
     
-    return res.status(200).json({
+    res.status(200).json({
       message: `Successfully updated ${result.count} tasks`,
       count: result.count
     });
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     next(error);
   }
 };
 
-export const reorderTasks = async (
+export const reorderTasks: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
     const { projectId } = req.params;
@@ -312,7 +330,8 @@ export const reorderTasks = async (
     // Check if user can write to this project
     const access = await validateProjectAccess(user.id, projectId, 'write');
     if (!access.success) {
-      return res.status(403).json({ error: access.error });
+      res.status(403).json({ error: access.error });
+      return;
     }
     
     // Use transaction for atomic updates
@@ -332,24 +351,26 @@ export const reorderTasks = async (
       )
     );
     
-    return res.status(200).json(updatedTasks);
+    res.status(200).json(updatedTasks);
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     if (err.code === 'P2025') {
-      return res.status(404).json({ error: 'One or more tasks not found or unauthorized' });
+      res.status(404).json({ error: 'One or more tasks not found or unauthorized' });
+      return;
     }
     next(error);
   }
 };
 
-export const deleteMultipleTasks = async (
+export const deleteMultipleTasks: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
     const { projectId } = req.params;
@@ -358,7 +379,8 @@ export const deleteMultipleTasks = async (
     // Check if user can write to this project
     const access = await validateProjectAccess(user.id, projectId, 'write');
     if (!access.success) {
-      return res.status(403).json({ error: access.error });
+      res.status(403).json({ error: access.error });
+      return;
     }
     
     const result = await prisma.task.deleteMany({
@@ -369,27 +391,29 @@ export const deleteMultipleTasks = async (
     });
     
     if (result.count === 0) {
-      return res.status(404).json({ error: 'No tasks found or unauthorized' });
+      res.status(404).json({ error: 'No tasks found or unauthorized' });
+      return;
     }
     
-    return res.status(200).json({
+    res.status(200).json({
       message: `Successfully deleted ${result.count} tasks`,
       count: result.count
     });
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     next(error);
   }
 };
 
-export const updateTaskPriority = async (
+export const updateTaskPriority: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const user = await getAuthenticatedUser(req);
     const { taskId } = req.params;
@@ -401,18 +425,20 @@ export const updateTaskPriority = async (
     });
     
     if (!currentTask) {
-      return res.status(404).json({ error: 'Task not found' });
+      res.status(404).json({ error: 'Task not found' });
+      return;
     }
     
     // Check if user can write to this project
     const access = await validateProjectAccess(user.id, currentTask.projectId, 'write');
     if (!access.success) {
-      return res.status(403).json({ error: access.error });
+      res.status(403).json({ error: access.error });
+      return;
     }
     
     // Simple version conflict check
-     if (version && currentTask.version !== version) {
-      return res.status(409).json({
+    if (version && currentTask.version !== version) {
+      res.status(409).json({
         error: 'VERSION_CONFLICT',
         message: `This task was modified by ${currentTask.updatedBy || 'another user'} while you were editing it.`,
         conflict: {
@@ -424,6 +450,7 @@ export const updateTaskPriority = async (
           currentTask: currentTask
         }
       });
+      return;
     }
     
     try {
@@ -437,14 +464,15 @@ export const updateTaskPriority = async (
         }
       });
       
-      return res.status(200).json(task);
+      res.status(200).json(task);
     } catch (prismaError) {
-      return handlePrismaError(prismaError, res);
+      if (handlePrismaError(prismaError, res)) return;
     }
   } catch (error) {
     const err = error as any;
     if (err.message === 'Unauthorized') {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     next(error);
   }
