@@ -2,7 +2,7 @@
 import { Response, NextFunction } from 'express';
 //import { User } from '@prisma/client'; 
 import prisma from '../models/prisma';
-import { AuthenticatedRequest } from '../types/express-custom';
+import { AuthenticatedRequest, AuthenticatedController } from '../types/express-custom';
 
 async function getOrCreateUser(auth0Id: string, email: string){
   return prisma.user.upsert({
@@ -15,33 +15,35 @@ async function getOrCreateUser(auth0Id: string, email: string){
   });
 }
 
-export const getCurrentUser = async (
+export const getCurrentUser: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { auth0Id, email } = req.user;
     const user = await getOrCreateUser(auth0Id, email);
     
-    return res.status(200).json(user);
+    res.status(200).json(user);
   } catch (error) {
     next(error);
   }
 };
 
-export const updateUser = async (
+export const updateUser: AuthenticatedController = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { auth0Id, email } = req.user;
@@ -54,7 +56,7 @@ export const updateUser = async (
       data: { name }
     });
     
-    return res.status(200).json(updatedUser);
+    res.status(200).json(updatedUser);
   } catch (error) {
     next(error);
   }

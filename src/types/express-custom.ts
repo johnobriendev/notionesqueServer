@@ -1,5 +1,5 @@
 // src/types/express-custom.ts
-import { Request } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
 export interface AuthenticatedRequest extends Request {
   auth?: any;
@@ -8,3 +8,9 @@ export interface AuthenticatedRequest extends Request {
     email: string;
   };
 }
+
+export type AuthenticatedController = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => Promise<void>;
