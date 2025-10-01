@@ -10,15 +10,16 @@ datasource db {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
+  id             String           @id @default(uuid())
+  email          String           @unique
   name           String?
-  authProviderId String    @unique // Auth0 user ID
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  authProviderId String           @unique // Auth0 user ID
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
   projects       Project[]
-  collaborations    ProjectCollaborator[]
-  sentInvitations   ProjectInvitation[] @relation("SentInvitations")
+  collaborations ProjectCollaborator[]
+  sentInvitations ProjectInvitation[] @relation("SentInvitations")
+  comments       TaskComment[]
 }
 
 model Project {
@@ -37,19 +38,20 @@ model Project {
 }
 
 model Task {
-  id           String   @id @default(uuid())
+  id           String        @id @default(uuid())
   title        String
   description  String?
-  status       String   // 'not started', 'in progress', 'completed'
-  priority     String   // 'none', 'low', 'medium', 'high', 'urgent'
+  status       String        // 'not started', 'in progress', 'completed'
+  priority     String        // 'none', 'low', 'medium', 'high', 'urgent'
   position     Int
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   projectId    String
-  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  customFields Json?    // For storing Record<string, string | number | boolean>
-  version      Int      @default(1)     // Starts at 1 for all existing tasks
-  updatedBy    String?                   // Nullable - existing tasks will be null
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  customFields Json?         // For storing Record<string, string | number | boolean>
+  version      Int           @default(1)     // Starts at 1 for all existing tasks
+  updatedBy    String?       // Nullable - existing tasks will be null
+  comments     TaskComment[]
 
   @@index([projectId])
   @@index([priority, position]) // For efficient sorting in Kanban view
@@ -82,13 +84,29 @@ model ProjectInvitation {
   status        String   @default("pending") // 'pending', 'accepted', 'declined', 'expired'
   createdAt     DateTime @default(now())
   expiresAt     DateTime // 7 days from creation
-  
+
   project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   sender        User     @relation("SentInvitations", fields: [senderUserId], references: [id], onDelete: Cascade)
-  
+
   @@unique([projectId, receiverEmail, status]) // Prevent duplicate pending invitations to same email
   @@index([projectId])
   @@index([receiverEmail])
   @@index([token])
   @@index([status])
+}
+
+// Task comments
+model TaskComment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  taskId    String
+  userId    String
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
 }

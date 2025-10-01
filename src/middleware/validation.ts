@@ -90,20 +90,34 @@ export const validateBulkUpdateData = (req: Request, res: Response, next: NextFu
 
 export const validateReorderData = (req: Request, res: Response, next: NextFunction) => {
   const { tasks } = req.body;
-  
+
   if (!Array.isArray(tasks) || tasks.length === 0) {
     return validationError(res, 'Tasks array is required and must not be empty');
   }
-  
+
   for (const task of tasks) {
     if (!task.id || typeof task.id !== 'string') {
       return validationError(res, 'Each task must have a valid id');
     }
-    
+
     if (typeof task.position !== 'number' || task.position < 0) {
       return validationError(res, 'Each task must have a valid position');
     }
   }
-  
+
+  next();
+};
+
+export const validateCommentData = (req: Request, res: Response, next: NextFunction) => {
+  const { content } = req.body;
+
+  if (!content?.trim()) {
+    return validationError(res, 'Comment content is required');
+  }
+
+  if (content.length > 2000) {
+    return validationError(res, 'Comment is too long (max 2000 characters)');
+  }
+
   next();
 };
